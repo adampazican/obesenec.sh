@@ -8,11 +8,12 @@
 
 #Náhodné číslo vieme získať pomocou $RANDOM. Príklad použitia: https://coderwall.com/p/s2ttyg/random-number-generator-in-bash
 #Pracujte každý samostatne.
+let celkoveSkore
 let skore
 let chyby
 let zivot
 
-slova=(bratislava zilina "kysucke nove mesto")
+slova=("bratislava" "kosice" "presov" "zilina" "banska bystrica" "nitra" "trnava" "trencin" "martin" "poprad" "prievidza" "zvolen" "povazska bystrica" "michalovce" "nove zamky" "spisska nova ves" "komarno" "humenne" "levice" "bardejov" "liptovsky mikulas" "lucenec" "piestany" "ruzomberok" "topolcany" "trebisov" "cadca" "dubnica nad vahom" "rimavska sobota" "partizanske" "vranov nad toplou" "dunajska streda" "pezinok" "sala" "hlohovec" "brezno" "senica" "snina" "nove mesto nad vahom" "ziar nad hronom" "roznava" "senec" "dolny kubin" "banovce nad bebravou" "puchov" "malacky" "handlova" "kezmarok" "stara lubovna" "sered" "kysucke nove mesto" "galanta" "skalica" "detva" "levoca" "samorin" "sabinov" "revuca" "velky krtis" "myjava" "zlate moravce" "bytca" "moldava nad bodvou" "svidnik" "holic" "nova dubnica" "stupava" "filakovo" "stropkov" "kolarovo" "sturovo" "banska stiavnica" "surany" "tvrdosin" "velke kapusany" "stara tura" "modra" "krompachy" "vrable" "velky meder" "secovce" "krupina" "namestovo" "vrutky" "svit" "turzovka" "kralovsky chlmec" "liptovsky hradok" "hrinova" "hnusta" "hurbanovo" "nova bana" "trstena" "sahy" "tornala" "zeliezovce" "krasno nad kysucou" "medzilaborce" "spisska bela" "lipany" "turcianske teplice" "zarnovica" "nemsova" "sobrance" "gelnica" "velky saris" "vrbove" "rajec" "poltar" "dobsina" "svaty jur" "ilava" "gabcikovo" "kremnica" "sladkovicovo" "gbely" "sastin-straze" "sliac" "brezova pod bradlom" "bojnice" "medzev" "strazske" "turany" "novaky" "trencianske teplice" "tisovec" "leopoldov" "giraltovce" "vysoke tatry" "spisske podhradie" "hanusovce nad toplou" "cierna nad tisou" "tlmace" "spisske vlachy" "jelsava" "podolinec" "rajecke teplice" "spisska stara ves" "modry kamen" "dudince")
 slova_length=${#slova[*]}
 
 let running=false
@@ -24,14 +25,7 @@ let vybrane_slovo_length
 let vybrane_slovo_special_chars
 let hadane_slovo
 
-
-function init() {
-	skore=0
-	chyby=0
-	zivot=5	
-	running=true
-	slow_render=true
-
+function generujSlovo(){
 	rand=$(( $RANDOM % $slova_length ))
 	vybrane_slovo=${slova[$rand]}
 	vybrane_slovo_length=${#vybrane_slovo}
@@ -51,7 +45,23 @@ function init() {
 			hadane_slovo+=_
 		fi
 	done
+}
 
+function initRoundState() {
+	skore=0
+	running=true
+	slow_render=true
+}
+
+function init() {
+	celkoveSkore=0
+
+	chyby=0
+	zivot=5	
+
+	initRoundState
+
+	generujSlovo
 }
 
 function echoif() {
@@ -83,18 +93,32 @@ function vykresliHraciuPlochu() {
 	echo   "|             |"
 	echo   "|             |"
 	echo   "|_____________|"
-	echo   "Skore: ${skore}  Zivot: ${zivot}    ${skore}/$((vybrane_slovo_length-vybrane_slovo_special_chars))     ${hadane_slovo}"
+	echo   "Skore: ${celkoveSkore}  Zivot: ${zivot}    ${skore}/$((vybrane_slovo_length-vybrane_slovo_special_chars))     ${hadane_slovo}"
 	slow_render=false
 }
 
 function spracujTah() {
 	hladane_pismeno=$1
-	if [ $1 == "!p" ]
+	hladane_pismeno_length=${#hladane_pismeno}
+
+	if [ "$1" == "!p" ]
 	then
 		return 22
-	elif [ $1 == "!r" ]
+	elif [ "$1" == "!r" ]
 	then
 		init
+		return
+	fi
+
+	if [ $hladane_pismeno_length -gt 1 ] && [ "$hladane_pismeno" == "$vybrane_slovo" ] 
+	then
+		if [ $((vybrane_slovo_length-vybrane_slovo_special_chars-skore)) -gt $skore ]
+		then
+			((zivot++))
+		fi
+		((celkoveSkore+=(vybrane_slovo_length-vybrane_slovo_special_chars)-skore))
+		((skore=vybrane_slovo_length-vybrane_slovo_special_chars))
+		hadane_slovo=$vybrane_slovo
 		return
 	fi
 
@@ -111,6 +135,7 @@ function spracujTah() {
 	if [ $multiplier -gt 0 ]
 	then
 		((skore=skore+1*multiplier))
+		((celkoveSkore=celkoveSkore+1*multiplier))
 	else
 		((zivot--))
 	fi
@@ -122,9 +147,8 @@ function gameLoop() {
 	do
 		clear
 		vykresliHraciuPlochu
-		let pismeno
-		read -p "Zadaj pismeno:" pismeno
-		spracujTah $pismeno
+		read -p "Zadaj pismeno:" "pismeno"
+		spracujTah "$pismeno"
 
 		if [ $? -eq 22 ]
 		then
@@ -134,6 +158,7 @@ function gameLoop() {
 		if [ $zivot -eq 0 ]
 		then
 			clear
+			hadane_slovo=$vybrane_slovo
 			vykresliHraciuPlochu
 			echo "Prehral si!"
 			running=false
@@ -156,7 +181,7 @@ function gameLoop() {
 function startMenu() {
 	echo "Obesenec ultimate"
 	start_menu=()
-	if [ $running == true ]
+	if [ $running == true ] || ( [ $running == false ]  && [ $zivot -gt 0 ] )
 	then 
 		start_menu+=("Pokracovat")
 	fi
@@ -172,7 +197,13 @@ function startMenu() {
 	do    
 		case $option in 
 			"Pokracovat")
+				if [ $running == false ]
+				then
+					initRoundState
+					generujSlovo
+				fi
 				gameLoop
+				break
 				;;
 			"Nova hra")
 				init
@@ -187,7 +218,8 @@ function startMenu() {
 				echo "Novu hru zapnes vyberom moznosti Nova hra"
 				echo "V hre sa hadaju slova po jednom pismenku, pricom na zaciatku su zname len prve a posledne pismeno slova a jeho dlzka"
 				echo "Hrac ma 5 zivotov a po vycerpani zivotov hra konci prehrou"
-				echo "Po uhadnuti vsetkych pismen slova hra konci vyhrou"
+				echo "Po uhadnuti vsetkych pismen slova hrac vyhral kolo a môže pokračovať v hre"
+				echo "Ak hráč pozná odpoveď, mozee skusit uhadnut cele slovo. Ak uhadne viac ako polku slova naraz získa spať jeden zivot"
 				echo "ingame prikazy: "
 				echo "!p -> pauza"
 				echo "!r -> restart"
